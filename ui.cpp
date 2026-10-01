@@ -12,6 +12,7 @@ UI::UI():
     loadButton(620,485,140,35,L"读取棋局"),
     replayButton(620,530,140,35,L"复盘")
 {
+    messageTime=0;
 }
 
 //显示信息栏
@@ -40,18 +41,24 @@ void UI::drawInfo(int blackWin,int whiteWin,int player)
     }
 
 
-   
+
     wstring blackText=L"黑胜:"+to_wstring(blackWin);
     outtextxy(650,180,blackText.c_str());
     wstring whiteText=L"白胜:"+to_wstring(whiteWin);
     outtextxy(650,220,whiteText.c_str());
-    if(!message.empty())
+    //让提示文字只显示3秒
+    if(messageTime>0)
     {
-        setcolor(BLACK);
 
-        setfont(30,0,"宋体");
+        setcolor(RED);
+
+        setfont(25,0,"宋体");
 
         outtextxy(630,40,message.c_str());
+
+
+        messageTime--;
+
     }
 }
 //显示胜利
@@ -141,4 +148,5 @@ bool UI::checkLoadClick(int x,int y)
 void UI::showMessage(wstring msg)
 {
     message=msg;
+    messageTime=180;
 }

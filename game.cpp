@@ -63,17 +63,6 @@ void Game::handleMouse()
                 restart();
                 return;
             }
-            //如果游戏已经结束，点击棋盘不再落子，也不能再悔棋
-             if(gameOver)
-            {
-                return;
-            }
-            //判断悔棋按钮是否被点击  
-            if(ui.checkUndoClick(x,y))
-            {
-                undo();
-                return;
-            } 
             //保存
             if(ui.checkSaveClick(x,y))
             {
@@ -86,6 +75,17 @@ void Game::handleMouse()
                 loadGame();
                 return;
             }
+            //如果游戏已经结束，点击棋盘不再落子，也不能再悔棋
+             if(gameOver)
+            {
+                return;
+            }
+            //判断悔棋按钮是否被点击  
+            if(ui.checkUndoClick(x,y))
+            {
+                undo();
+                return;
+            } 
             //鼠标坐标转换为棋盘坐标，把交叉点附近20的点位也算进去
             int col=(x-Board::START_X+Board::GRID/2)/Board::GRID;
             int row=(y-Board::START_Y+Board::GRID/2)/Board::GRID;
@@ -165,7 +165,7 @@ void Game::undo()
 void Game::saveGame()
 {
 
-    bool success = SaveManager::save(history,blackWin,whiteWin,player);
+    bool success = SaveManager::save(history,blackWin,whiteWin,player,gameOver,winner);
 
 
     if(success)
@@ -182,7 +182,7 @@ void Game::saveGame()
 void Game::loadGame()
 {
 
-    if(!SaveManager::load(history,blackWin,whiteWin,player))
+    if(!SaveManager::load(history,blackWin,whiteWin,player,gameOver,winner))
     {
         return;
     }

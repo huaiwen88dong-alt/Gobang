@@ -13,6 +13,7 @@ private:
     Button replayButton;
     Button loadButton;
     std::wstring message;
+    int messageTime;
 
 public:
     UI();

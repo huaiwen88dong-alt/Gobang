@@ -6,7 +6,7 @@
 using namespace std;
 
 //保存棋局
-bool SaveManager::save(const vector<Move>& history,int blackWin,int whiteWin,int player)
+bool SaveManager::save(const vector<Move>& history,int blackWin,int whiteWin,int player,bool gameOver,int winner)
 {
     //输出文件流
     ofstream file("save.txt");
@@ -18,6 +18,10 @@ bool SaveManager::save(const vector<Move>& history,int blackWin,int whiteWin,int
     file<<blackWin<<" "<<whiteWin<<endl;
     //保存当前玩家
     file<<player<<endl;
+    //保存游戏状态
+    file<<gameOver<<endl;
+    //保存胜者
+    file<<winner<<endl;
     //保存棋子数量
     file<<history.size()<<endl;
     //保存每一步
@@ -29,28 +33,55 @@ bool SaveManager::save(const vector<Move>& history,int blackWin,int whiteWin,int
     return true;
 }
 //读取棋局
-bool SaveManager::load(vector<Move>& history,int& blackWin,int& whiteWin,int& player)
+bool SaveManager::load(vector<Move>& history,int& blackWin,int& whiteWin,int& player,bool& gameOver,int& winner)
 {
+
     ifstream file("save.txt");
+
+
     if(!file.is_open())
     {
         return false;
     }
-    //读取比分
-    file >> blackWin >> whiteWin;
-    //读取当前玩家
-    file >> player;
-    //读取棋子数量
+
+
+    file>>blackWin>>whiteWin;
+
+
+    file>>player;
+
+
+    file>>gameOver;
+
+
+    file>>winner;
+
+
     int size;
-    file >> size;
+
+    file>>size;
+
+
     history.clear();
-    //读取每一步棋
+
+
     for(int i=0;i<size;i++)
     {
+
         Move move;
-        file >> move.row>> move.col>> move.player;
+
+
+        file>>move.row>>move.col>>move.player;
+
+
         history.push_back(move);
+
     }
+
+
     file.close();
+
+
     return true;
+
 }

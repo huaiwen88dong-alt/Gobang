@@ -36,6 +36,8 @@ public:
     bool checkSaveClick(int x,int y);
     //判断读取按钮是否被点击
     bool checkLoadClick(int x,int y);
+    //判断复盘按钮是否被点击
+    bool checkReplayClick(int x,int y);
     //显示提示信息
     void showMessage(std::wstring msg);
 

@@ -11,6 +11,9 @@ Game::Game()
     winner=0;
     blackWin=0;
     whiteWin=0;
+    replaying=false;
+    replayIndex=0;
+    replayCount=0;
 }
 void Game::run()
 {
@@ -20,6 +23,7 @@ void Game::run()
         cleardevice();   // 清空画面
         //处理输入
         handleMouse();
+        replayStep();
         //画棋盘
         board.draw();
         ui.drawInfo(blackWin,whiteWin,player);
@@ -75,6 +79,17 @@ void Game::handleMouse()
                 loadGame();
                 return;
             }
+            //判断复盘按钮是否被点击
+            if(ui.checkReplayClick(x,y))
+            {
+                if(!gameOver)
+                {
+                    ui.showMessage(L"游戏未结束");
+                    return;
+                }
+                startReplay();
+                return;
+            }
             //如果游戏已经结束，点击棋盘不再落子，也不能再悔棋
              if(gameOver)
             {
@@ -86,6 +101,13 @@ void Game::handleMouse()
                 undo();
                 return;
             } 
+            //复盘时禁止棋盘操作
+
+            if(replaying)
+            {
+                return;
+            }
+
             //鼠标坐标转换为棋盘坐标，把交叉点附近20的点位也算进去
             int col=(x-Board::START_X+Board::GRID/2)/Board::GRID;
             int row=(y-Board::START_Y+Board::GRID/2)/Board::GRID;
@@ -195,4 +217,49 @@ void Game::loadGame()
     }
     gameOver=false;
     winner=0;
+}
+//要开始复盘
+void Game::startReplay()
+{
+    replaying=true;
+    replayIndex=0;
+    replayCount=0;
+    board.clear();
+    ui.showMessage(L"开始复盘");
+}
+void Game::replayStep()
+{
+
+    if(!replaying)
+    {
+        return;
+    }
+    replayCount++;
+    //每60帧播放一步
+    if(replayCount<90)
+    {
+        return;
+    }
+    replayCount=0;
+    //已经播放结束
+    if(replayIndex>=history.size())
+    {
+        replaying=false;
+
+        ui.showMessage(L"复盘结束");
+
+        return;
+    }
+
+
+    //取当前一步
+    Move move=history[replayIndex];
+
+
+    //放回棋盘
+    board.placeChess(move.row,move.col,move.player);
+
+
+    replayIndex++;
+
 }

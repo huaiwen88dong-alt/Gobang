@@ -19,6 +19,13 @@ private:
     int blackWin;
     int whiteWin;
     std::vector <Move> history;
+    //表示是否在复盘状态
+    bool replaying;
+    //复盘的当前索引
+    int replayIndex;
+    //控制复盘播放速度
+    int replayCount;
+
 
 
 public:
@@ -38,6 +45,10 @@ public:
     void saveGame();
     //读取游戏
     void loadGame();
+    //开始复盘
+    void startReplay();
+    //复盘每一步
+    void replayStep();
 
 };
 

@@ -150,3 +150,13 @@ void UI::showMessage(wstring msg)
     message=msg;
     messageTime=180;
 }
+bool UI::checkReplayClick(int x,int y)
+{
+
+    if(replayButton.isClicked(x,y))
+    {
+        return true;
+    }
+
+    return false;
+}

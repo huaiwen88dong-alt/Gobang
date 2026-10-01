@@ -25,6 +25,10 @@ class  Board{
     void draw();
     //增加落子函数
     bool placeChess(int row,int col,int player);
+    //增加判断输赢函数
+    bool checkWin(int row,int col,int player);
+    //清空棋盘
+    void clear();
 }
 ;
 #endif

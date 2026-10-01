@@ -3,7 +3,7 @@
 
 
 #include "board.h"
-
+#include "ui.h"
 
 class Game
 {
@@ -11,8 +11,12 @@ class Game
 private:
 
     Board board;
-
+    UI ui;
     int player;
+    bool gameOver;
+    int winner;
+    int blackWin;
+    int whiteWin;
 
 
 public:
@@ -22,6 +26,10 @@ public:
     void run();
     //鼠标点击
     void handleMouse();
+    //绘制获胜信息
+    void drawWinner();
+    //重新开始游戏
+    void restart();  
 
 };
 

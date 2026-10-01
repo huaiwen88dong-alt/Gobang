@@ -5,7 +5,8 @@
 int main()
 {
 
-    initgraph(600,600);
+    initgraph(800,600,INIT_RENDERMANUAL);
+
 
 
     //设置背景

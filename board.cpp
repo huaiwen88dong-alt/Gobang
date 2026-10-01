@@ -1,5 +1,8 @@
 #include "board.h"
 #include <graphics.h>
+#include<algorithm>
+#include <iostream>
+using namespace std;
 Board::Board()
 {
     init();
@@ -17,6 +20,9 @@ void Board::init()
 }
 void Board::draw()
 {
+     //棋盘背景
+    setfillcolor(EGERGB(210,160,90));
+    bar(0,0,800,600);
     setcolor(EGERGB(100,60,20));
     //增加线宽
     setlinewidth(2);
@@ -64,4 +70,101 @@ bool Board::placeChess(int row,int col,int player)
     }
     chess[row][col]=player;
     return true;
+}
+//判断输赢函数
+bool Board::checkWin(int row,int col,int player)
+{
+    int count=0;
+    //判断横向
+    count=0;
+    for(int i=0;i<BOARD_SIZE;i++)
+    {
+        if(chess[row][i]==player)
+        {
+            count++;
+            if(count>=5)
+            {
+                return true;
+            }
+        }
+        else
+        {
+            count=0;
+        }
+    }
+    //判断纵向
+    count=0;
+    for(int i=0;i<BOARD_SIZE;i++)
+    {
+        if(chess[i][col]==player)
+        {
+            count++;
+            if(count>=5)
+            {
+                return true;
+            }
+        }
+        else
+        {
+            count=0;
+        }
+    }
+    //判断左上到右下的斜线
+    count=0;
+    //找左上角起点
+    int startRow=row-min(row,col);
+    int startCol=col-min(row,col);
+    while(startRow<BOARD_SIZE&&startCol<BOARD_SIZE)
+    {
+        if(chess[startRow][startCol]==player)
+        {
+            count++;
+            if(count>=5)
+            {
+                return true;
+            }
+        }
+        else
+        {
+            count=0;
+        }
+        startRow++;
+        startCol++;
+    }
+    //判断右上到左下的斜线
+    count=0;
+    //找右上角起点
+    int step=min(row,BOARD_SIZE-1-col);
+    startRow=row-step;
+    startCol=col+step;
+    while(startRow<BOARD_SIZE&&startCol>=0)
+    {
+        if(chess[startRow][startCol]==player)
+        {
+            count++;
+            if(count>=5)
+            {
+                return true;
+            }
+        }
+        else
+        {
+            count=0;
+        }
+        startRow++;
+        startCol--;
+    }
+    return false;
+}
+//清空棋盘
+void Board::clear()
+{
+    for(int i=0;i<BOARD_SIZE;i++)
+    {
+        for(int j=0;j<BOARD_SIZE;j++)
+        {
+            chess[i][j]=0;
+        }
+    }
+  
 }

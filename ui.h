@@ -1,5 +1,6 @@
 #pragma once
 #include "button.h"
+#include<string>
 class UI
 {
 private:
@@ -8,8 +9,10 @@ private:
     Button aiButton;
     Button networkButton;
     Button saveButton;
-    Button loadButton;
+    Button undoButton;
     Button replayButton;
+    Button loadButton;
+    std::wstring message;
 
 public:
     UI();
@@ -24,8 +27,17 @@ public:
     void drawWinner(int winner);
     //绘制右侧菜单
     void drawMenu();
-    //判断按钮是否被点击
-    bool checkButtonClick(int x,int y);
+    //判断重新开始按钮是否被点击
+    bool checkRestartClick(int x,int y);
+    //判断悔棋按钮是否被点击
+    bool checkUndoClick(int x,int y);
+    //判断保存按钮是否被点击
+    bool checkSaveClick(int x,int y);
+    //判断读取按钮是否被点击
+    bool checkLoadClick(int x,int y);
+    //显示提示信息
+    void showMessage(std::wstring msg);
+
 
 
 };

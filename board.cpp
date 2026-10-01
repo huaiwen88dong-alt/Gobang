@@ -168,3 +168,8 @@ void Board::clear()
     }
   
 }
+//悔棋函数
+void Board::removeChess(int row,int col)
+{
+    chess[row][col]=0;
+}

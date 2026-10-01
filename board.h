@@ -29,6 +29,8 @@ class  Board{
     bool checkWin(int row,int col,int player);
     //清空棋盘
     void clear();
+    //增加悔棋函数
+    void removeChess(int row,int col);
 }
 ;
 #endif

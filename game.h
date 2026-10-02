@@ -4,6 +4,7 @@
 #include"move.h"
 #include "board.h"
 #include "ui.h"
+#include "AI.h"
 #include<vector>
 #include<iostream>
 class Game
@@ -18,6 +19,8 @@ private:
     int winner;
     int blackWin;
     int whiteWin;
+    AI ai;
+    bool aiMode;
     std::vector <Move> history;
     //表示是否在复盘状态
     bool replaying;
@@ -49,6 +52,10 @@ public:
     void startReplay();
     //复盘每一步
     void replayStep();
+    //开始AI模式
+    void startAI();
+    //AI落子
+    void aiMove();
 
 };
 

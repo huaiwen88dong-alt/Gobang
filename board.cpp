@@ -173,3 +173,8 @@ void Board::removeChess(int row,int col)
 {
     chess[row][col]=0;
 }
+//获取棋盘某个位置的状态
+int Board::getChess(int row,int col)
+{
+    return chess[row][col];
+}

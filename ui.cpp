@@ -102,7 +102,7 @@ void UI::drawMenu()
     replayButton.draw();
 
 }
-//判断按钮是否被点击
+//判断重新开始按钮是否被点击
 bool UI::checkRestartClick(int x,int y)
 {
 
@@ -150,10 +150,21 @@ void UI::showMessage(wstring msg)
     message=msg;
     messageTime=180;
 }
+//判断复盘按钮是否被点击
 bool UI::checkReplayClick(int x,int y)
 {
 
     if(replayButton.isClicked(x,y))
+    {
+        return true;
+    }
+
+    return false;
+}
+//判断AI按钮是否被点击
+bool UI::checkAIClick(int x,int y)
+{
+    if(aiButton.isClicked(x,y))
     {
         return true;
     }

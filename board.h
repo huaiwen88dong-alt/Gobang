@@ -31,6 +31,8 @@ class  Board{
     void clear();
     //增加悔棋函数
     void removeChess(int row,int col);
+    //获取棋盘某个位置的状态
+    int getChess(int row,int col);
 }
 ;
 #endif

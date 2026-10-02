@@ -14,6 +14,7 @@ Game::Game()
     replaying=false;
     replayIndex=0;
     replayCount=0;
+    aiMode=false;
 }
 void Game::run()
 {
@@ -90,6 +91,12 @@ void Game::handleMouse()
                 startReplay();
                 return;
             }
+            //判断AI按钮是否被点击
+            if(ui.checkAIClick(x,y))
+            {
+                startAI();
+                return;
+            }
             //如果游戏已经结束，点击棋盘不再落子，也不能再悔棋
              if(gameOver)
             {
@@ -139,16 +146,14 @@ void Game::handleMouse()
                 history.push_back(move);
                 cout<<"player:"<<player<<" row:"<<row<<" col:"<<col<<endl;
                 //落子成功，切换玩家
-                if(player==1)
+                player=3-player;
+
+
+                //AI回合
+                if(aiMode && player==2)
                 {
-                    //黑棋切换为白棋
-                    player=2;
+                    aiMove();
                 }
-                else
-                {
-                    //白棋切换为黑棋
-                    player=1;
-                }   
             }
         }
     }
@@ -262,4 +267,31 @@ void Game::replayStep()
 
     replayIndex++;
 
+}
+void Game::startAI()
+{
+    restart();
+
+    aiMode=true;
+
+    ui.showMessage(L"AI对战开始");
+
+}
+//AI落子
+void Game::aiMove()
+{
+    Move move=ai.getMove(board);
+
+
+    board.placeChess(
+        move.row,
+        move.col,
+        move.player
+    );
+
+
+    history.push_back(move);
+
+
+    player=1;
 }

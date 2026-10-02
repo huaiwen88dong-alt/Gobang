@@ -40,6 +40,8 @@ public:
     bool checkReplayClick(int x,int y);
     //显示提示信息
     void showMessage(std::wstring msg);
+    //判断AI按钮是否被点击
+    bool checkAIClick(int x,int y);
 
 
 

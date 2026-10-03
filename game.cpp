@@ -291,6 +291,19 @@ void Game::aiMove()
 
 
     history.push_back(move);
+    //检查AI是否获胜
+    if(board.checkWin(move.row,move.col,move.player))
+    {
+        gameOver=true;
+
+        winner=move.player;
+
+        whiteWin++;
+
+        ui.showMessage(L"AI胜利");
+
+        return;
+    }
 
 
     player=1;

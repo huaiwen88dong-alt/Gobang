@@ -1,10 +1,11 @@
+#include "network.h" // Winsock 先于 game.h 内的 UI/graphics 头文件包含。
 #include"game.h"
 #include"ui.h"
 #include<graphics.h>
 #include<iostream>
 #include<string>
 using namespace std;
-Game::Game()
+Game::Game(Network* connection, int localPlayer)
 {
     player=1;
     gameOver=false;
@@ -14,7 +15,14 @@ Game::Game()
     replaying=false;
     replayIndex=0;
     replayCount=0;
-    aiMode=false;
+    //默认进入双人模式
+    mode=LOCAL;
+    // 本地 main 仍使用 Game game；只有联机入口会传入有效连接。
+    network=connection;
+    myPlayer=localPlayer;
+    networkDisconnected=false;
+    if(network != nullptr)
+        ui.showMessage(myPlayer == 1 ? L"联机开始，你执黑" : L"联机开始，你执白");
 }
 void Game::run()
 {
@@ -22,6 +30,8 @@ void Game::run()
     while(is_run())
     {
         cleardevice();   // 清空画面
+        // 先接收对方落子，再处理本地输入；每帧检查一次，不阻塞窗口。
+        pollNetwork();
         //处理输入
         handleMouse();
         replayStep();
@@ -62,6 +72,12 @@ void Game::handleMouse()
             //计算点击位置对应的行列
             int x=msg.x;
             int y=msg.y;
+            // 联机的回合限制与操作限制只在此分支生效，本地流程继续走下面原代码。
+            if(network != nullptr)
+            {
+                handleNetworkClick(x,y);
+                return;
+            }
             //判断重新开始按钮是否被点击
             if(ui.checkRestartClick(x,y))
             {
@@ -96,6 +112,10 @@ void Game::handleMouse()
             {
                 startAI();
                 return;
+            }
+            if(ui.checkLocalClick(x,y))
+            {
+                startLocal();
             }
             //如果游戏已经结束，点击棋盘不再落子，也不能再悔棋
              if(gameOver)
@@ -150,7 +170,7 @@ void Game::handleMouse()
 
 
                 //AI回合
-                if(aiMode && player==2)
+                if(mode==AI_MODE&& player==2)
                 {
                     aiMove();
                 }
@@ -270,9 +290,10 @@ void Game::replayStep()
 }
 void Game::startAI()
 {
+    //切换到AI模式
+    mode=AI_MODE;
     restart();
 
-    aiMode=true;
 
     ui.showMessage(L"AI对战开始");
 
@@ -307,4 +328,113 @@ void Game::aiMove()
 
 
     player=1;
+}
+
+// 联机点击只支持落子和保存；其他操作没有同步协议，暂时拒绝，避免两边棋盘不同。
+void Game::handleNetworkClick(int x, int y)
+{
+    if(ui.checkSaveClick(x, y))
+    {
+        saveGame();
+        return;
+    }
+    if(ui.checkRestartClick(x, y) || ui.checkUndoClick(x, y) ||
+       ui.checkLoadClick(x, y) || ui.checkReplayClick(x, y) || ui.checkAIClick(x, y))
+    {
+        ui.showMessage(L"联机暂不支持此操作");
+        return;
+    }
+
+    // 右侧是控制区，不能当作棋盘坐标。双人与联机按钮仍只是保留的入口外观。
+    if(x < 0 || x >= BOARD_AREA_WIDTH || y < 0 || y >= WINDOW_HEIGHT)
+        return;
+    if(networkDisconnected)
+    {
+        ui.showMessage(L"连接已断开，请重新启动");
+        return;
+    }
+    if(gameOver)
+        return;
+    if(player != myPlayer)
+    {
+        ui.showMessage(L"请等待对方落子");
+        return;
+    }
+
+    // 使用现有坐标换算与落子规则；不是本方回合或已有棋子的交点不会发送。
+    Move move;
+    move.col = (x - Board::START_X + Board::GRID / 2) / Board::GRID;
+    move.row = (y - Board::START_Y + Board::GRID / 2) / Board::GRID;
+    move.player = myPlayer;
+    if(!placeNetworkMove(move))
+        return;
+    if(!network->sendMove(move))
+        stopNetwork(L"发送失败，连接已断开");
+}
+
+// 每帧尝试接收一步棋。0 表示暂无完整消息，直接返回，窗口继续绘制和响应。
+void Game::pollNetwork()
+{
+    if(network == nullptr || networkDisconnected)
+        return;
+
+    Move move;
+    const int result = network->receiveMove(move);
+    if(result == 0)
+        return;
+    if(result < 0)
+    {
+        stopNetwork(L"对方已断开连接");
+        return;
+    }
+
+    // 只接受对手棋色、正确回合和空交点，不能让错误网络数据进入胜负判断。
+    if(move.player != 3 - myPlayer || !placeNetworkMove(move))
+        stopNetwork(L"收到无效落子，连接已关闭");
+}
+
+// 双方使用同一段联机落子处理，因此历史、胜者、比分和下一个回合保持一致。
+// Board 的落子与胜负算法不变，这里只是调用现有接口并更新 Game 的状态。
+bool Game::placeNetworkMove(const Move& move)
+{
+    if(gameOver || move.player != player)
+        return false;
+    if(!board.placeChess(move.row, move.col, move.player))
+        return false;
+
+    history.push_back(move);
+    if(board.checkWin(move.row, move.col, move.player))
+    {
+        gameOver = true;
+        winner = move.player;
+        if(winner == 1)
+        {
+            blackWin++;
+            ui.showMessage(L"黑棋获胜");
+        }
+        else
+        {
+            whiteWin++;
+            ui.showMessage(L"白棋获胜");
+        }
+    }
+    player = 3 - player;
+    return true;
+}
+
+// 出错后停止继续收发和落子，保留当前棋盘供查看或保存，不自动重连。
+void Game::stopNetwork(std::wstring message)
+{
+    networkDisconnected = true;
+    network->close();
+    ui.showMessage(message);
+}
+// 联机模式下，点击双人按钮切换到本地双人模式，保留当前棋盘和比分。
+void Game::startLocal()
+{
+    //切换到双人模式
+    mode=LOCAL;
+
+    //重新开始
+    restart();
 }

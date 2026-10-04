@@ -1,4 +1,5 @@
 #include "board.h"
+#include "ui.h" // 仅引用界面尺寸与配色，棋盘数据和落子逻辑不变。
 #include <graphics.h>
 #include<algorithm>
 #include <iostream>
@@ -20,9 +21,9 @@ void Board::init()
 }
 void Board::draw()
 {
-     //棋盘背景
-    setfillcolor(EGERGB(210,160,90));
-    bar(0,0,800,600);
+    // 浅木色只覆盖左侧 600×600 棋盘区，避免覆盖右侧暖米色控制面板。
+    setfillcolor(UI_BOARD_BACKGROUND);
+    bar(0,0,BOARD_AREA_WIDTH,WINDOW_HEIGHT);
     setcolor(EGERGB(100,60,20));
     //增加线宽
     setlinewidth(2);

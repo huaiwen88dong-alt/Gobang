@@ -6,6 +6,7 @@
 // 服务器是黑方：先启动本程序，再启动 client.exe。每次运行只进行一局联机。
 int main()
 {
+    //控制台输出中文，防止乱码
     SetConsoleOutputCP(CP_UTF8);
     std::cout << "服务器执黑；地址 " << NETWORK_IP << ":" << NETWORK_PORT << std::endl;
     Network net;

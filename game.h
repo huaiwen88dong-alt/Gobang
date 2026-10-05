@@ -81,6 +81,8 @@ public:
     void aiMove();
     //开始双人模式
     void startLocal();
+    // 点一次联机按钮，自动启动同目录的服务器和客户端。
+    void startNetwork();
 
 };
 

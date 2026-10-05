@@ -5,25 +5,16 @@ using namespace std;
 
 // 统一设置中文字体；ui.h 中声明了本函数，button.cpp 也能直接使用。
 // 保留这个函数是为了避免每次画文字都重复一整段字体设置。
+// 统一设置微软雅黑，字符宽度自动确定。
 void setTextFont(int pixelHeight)
 {
-    // LOGFONTW 是 Windows 的字体设置结构体，先清零再填写需要的设置。
-    // 负高度指定字形本身的像素高度；ClearType 请求系统平滑文字边缘。
-    LOGFONTW font = {};
-    font.lfHeight = -pixelHeight;
-    font.lfWeight = FW_NORMAL;
-    font.lfCharSet = DEFAULT_CHARSET;
-    font.lfQuality = CLEARTYPE_QUALITY;
-    lstrcpyW(font.lfFaceName, L"Microsoft YaHei");
-    setfont(&font);
+    setfont(pixelHeight, 0, "Microsoft YaHei");
 }
 
 // static 表示这个辅助函数仅在 ui.cpp 内使用，Game 不需要调用它。
-// 分组标题和细分隔线使用统一左边界，清晰组织控制区。
-// title 是分组名称，y 是文字顶部；所有标题统一使用 PANEL_X 作为左边界。
 static void drawSection(const wchar_t* title, int y)
 {
-    setTextFont(18);
+    setTextFont(22);
     setcolor(EGERGB(95, 85, 68));
     outtextxy(PANEL_X, y, title);
 }
@@ -85,10 +76,10 @@ void UI::drawInfo(int blackWin, int whiteWin, int player)
     // 标题 y=25，副标题 y=66；两者共用左边界，但通过字号形成层级。
     setbkmode(TRANSPARENT);
     setcolor(UI_TEXT);
-    setTextFont(28);
+    setTextFont(32);
     outtextxy(PANEL_X, 25, L"五子棋");
     setcolor(EGERGB(95, 85, 68));
-    setTextFont(16);
+    setTextFont(20);
     outtextxy(PANEL_X, 66, L"15 × 15  /  黑棋先行");
 
     // 3. 状态区集中展示当前执棋和原有胜局计数，不推断或新增业务状态。
@@ -102,16 +93,16 @@ void UI::drawInfo(int blackWin, int whiteWin, int player)
     setfillcolor(player == 1 ? BLACK : WHITE);
     solidcircle(PANEL_X + 27, statusY + 28, 11);
     setcolor(UI_TEXT);
-    setTextFont(22);
+    setTextFont(26);
     outtextxy(PANEL_X + 50, statusY + 14,
               player == 1 ? L"当前执棋 · 黑棋" : L"当前执棋 · 白棋");
     // 当前执棋文字从区域左侧偏移 50，给圆形图标留出空间。
     // 下方统计文字距顶部约 55，避开第一行；三个位置分别对应标签、黑胜、白胜。
-    setTextFont(16);
+    setTextFont(20);
     setcolor(EGERGB(95, 85, 68));
     outtextxy(PANEL_X + 16, statusY + 57, L"累计胜局");
     setcolor(UI_TEXT);
-    setTextFont(18);
+    setTextFont(22);
     // to_wstring 将数字转换成宽字符串；c_str() 将字符串交给 EGE 的文字函数。
     wstring blackText = L"黑胜  " + to_wstring(blackWin);
     wstring whiteText = L"白胜  " + to_wstring(whiteWin);
@@ -121,13 +112,13 @@ void UI::drawInfo(int blackWin, int whiteWin, int player)
     // 4. 底部固定提示区承接保存、胜负和复盘消息，沿用原来的 180 帧显示时间。
     // 横线位于 y=530；标签在其下方，消息向右偏移 52，避免与“提示”重叠。
     drawSeparator(530);
-    setTextFont(16);
+    setTextFont(20);
     setcolor(EGERGB(95, 85, 68));
     outtextxy(PANEL_X, 544, L"提示");
     if(messageTime > 0)
     {
         setcolor(EGERGB(88, 97, 71));
-        setTextFont(20);
+        setTextFont(24);
         outtextxy(PANEL_X + 52, 541, message.c_str());
         // 每绘制一帧减少一次；60 帧/秒时，180 帧约为 3 秒。
         messageTime--;
@@ -233,4 +224,10 @@ bool UI::checkAIClick(int x,int y)
 bool UI::checkLocalClick(int x,int y)
 {
     return localButton.isClicked(x,y);
+}
+
+// 和双人按钮一样，只检查点击位置，不在 UI 中处理连接。
+bool UI::checkNetworkClick(int x,int y)
+{
+    return networkButton.isClicked(x,y);
 }

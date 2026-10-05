@@ -15,12 +15,11 @@ const int PANEL_X = 632;
 const int PANEL_WIDTH = 336;
 
 // 三列：104×3 + 12×2 = 336；两列：162×2 + 12 = 336。
-// 所有按钮高 42，间隔 12；切角尺寸同时用于绘制和点击判断。
+// 所有矩形按钮高 42，间隔 12。
 const int BUTTON_HEIGHT = 42;
 const int BUTTON_GAP = 12;
 const int SMALL_BUTTON_WIDTH = 104;
 const int LARGE_BUTTON_WIDTH = 162;
-const int BUTTON_CORNER = 4;
 
 // UI_ 前缀说明这些颜色用于界面，避免与其他文件里的名称混淆。
 // EGERGB 的三个参数分别是红、绿、蓝，数值范围为 0～255。
@@ -39,10 +38,7 @@ void setTextFont(int pixelHeight);
 class UI
 {
 private:
-
-    // 仅预留双人入口的外观，不向 Game 增加模式切换或鼠标处理逻辑。
     Button localButton;
-
     Button restartButton;
     Button aiButton;
     Button networkButton;
@@ -84,6 +80,8 @@ public:
     bool checkAIClick(int x,int y);
     //判断双人按钮是否被点击
     bool checkLocalClick(int x,int y);
+    // 判断联机按钮是否被点击，启动程序的操作交给 Game。
+    bool checkNetworkClick(int x,int y);
 
 
 

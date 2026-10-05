@@ -38,5 +38,5 @@ public:
 
     //判断鼠标是否点击
     bool isClicked(int mouseX,int mouseY);
-
+        
 };

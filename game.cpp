@@ -4,6 +4,7 @@
 #include<graphics.h>
 #include<iostream>
 #include<string>
+#include <shellapi.h> // 使用 Windows 自带的 ShellExecuteW 启动两个联机 exe。
 using namespace std;
 Game::Game(Network* connection, int localPlayer)
 {
@@ -72,6 +73,12 @@ void Game::handleMouse()
             //计算点击位置对应的行列
             int x=msg.x;
             int y=msg.y;
+            // 在联机输入分支之前检查入口按钮；处理后返回，不再把点击当作落子。
+            if(ui.checkNetworkClick(x,y))
+            {
+                startNetwork();
+                return;
+            }
             // 联机的回合限制与操作限制只在此分支生效，本地流程继续走下面原代码。
             if(network != nullptr)
             {
@@ -330,7 +337,7 @@ void Game::aiMove()
     player=1;
 }
 
-// 联机点击只支持落子和保存；其他操作没有同步协议，暂时拒绝，避免两边棋盘不同。
+// 联机支持落子、保存和同步重开；其余操作尚未同步，暂时拒绝。
 void Game::handleNetworkClick(int x, int y)
 {
     if(ui.checkSaveClick(x, y))
@@ -338,7 +345,24 @@ void Game::handleNetworkClick(int x, int y)
         saveGame();
         return;
     }
-    if(ui.checkRestartClick(x, y) || ui.checkUndoClick(x, y) ||
+    // 一方点击就清空本方，并通知对方清空；不等待回复，比分与连接保持不变。
+    if(ui.checkRestartClick(x, y))
+    {
+        if(networkDisconnected)
+        {
+            ui.showMessage(L"连接已断开，请重新启动");
+            return;
+        }
+        if(!network->sendRestart())
+        {
+            stopNetwork(L"重开发送失败，连接已断开");
+            return;
+        }
+        restart();
+        ui.showMessage(L"重新开始，黑棋先行");
+        return;
+    }
+    if(ui.checkUndoClick(x, y) ||
        ui.checkLoadClick(x, y) || ui.checkReplayClick(x, y) || ui.checkAIClick(x, y))
     {
         ui.showMessage(L"联机暂不支持此操作");
@@ -385,6 +409,15 @@ void Game::pollNetwork()
     if(result < 0)
     {
         stopNetwork(L"对方已断开连接");
+        return;
+    }
+
+    // 特殊标记只负责清空本方，不再次发送，否则两边会来回通知。
+    // 放在普通落子检查之前，因此已经获胜的棋局也可以重开。
+    if(move.row == 255 && move.col == 255 && move.player == 0)
+    {
+        restart();
+        ui.showMessage(L"对方重新开始，黑棋先行");
         return;
     }
 
@@ -437,4 +470,51 @@ void Game::startLocal()
 
     //重新开始
     restart();
+}
+
+// 本地测试入口：自动打开两个联机窗口，当前窗口和当前棋局保持原样。
+void Game::startNetwork()
+{
+    if(network != nullptr)
+    {
+        ui.showMessage(L"当前已经是联机对战");
+        return;
+    }
+
+    // 获取当前 exe 所在文件夹，保证从不同工作目录启动也能找到联机程序。
+    wchar_t path[MAX_PATH];
+    DWORD length = GetModuleFileNameW(nullptr, path, MAX_PATH);
+    if(length == 0 || length >= MAX_PATH)
+    {
+        ui.showMessage(L"无法获取程序路径");
+        return;
+    }
+    wstring folder = path;
+    folder = folder.substr(0, folder.find_last_of(L"\\/"));
+    wstring server = folder + L"\\server.exe";
+    wstring client = folder + L"\\client.exe";
+
+    // 先检查两个文件都存在，再启动，避免缺少客户端时只打开一个等待窗口。
+    if(GetFileAttributesW(server.c_str()) == INVALID_FILE_ATTRIBUTES ||
+       GetFileAttributesW(client.c_str()) == INVALID_FILE_ATTRIBUTES)
+    {
+        ui.showMessage(L"请先编译两个联机程序");
+        return;
+    }
+
+    // 先开服务器，再开客户端；客户端会自行重试连接，这里不需要等待或弹选择框。
+    // ShellExecuteW 的返回值大于 32 表示启动成功；folder 也作为新程序工作目录。
+    if((INT_PTR)ShellExecuteW(nullptr, L"open", server.c_str(), nullptr,
+                             folder.c_str(), SW_SHOWNORMAL) <= 32)
+    {
+        ui.showMessage(L"服务器启动失败");
+        return;
+    }
+    if((INT_PTR)ShellExecuteW(nullptr, L"open", client.c_str(), nullptr,
+                             folder.c_str(), SW_SHOWNORMAL) <= 32)
+    {
+        ui.showMessage(L"客户端启动失败");
+        return;
+    }
+    ui.showMessage(L"两个联机窗口已启动");
 }

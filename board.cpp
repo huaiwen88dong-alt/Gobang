@@ -58,7 +58,7 @@ void Board::draw()
         }
     }
 }
-//落子函数
+
 bool Board::placeChess(int row,int col,int player)
 {
     if(row<0||row>=BOARD_SIZE||col<0||col>=BOARD_SIZE)

@@ -16,9 +16,7 @@ Game::Game(Network* connection, int localPlayer)
     replaying=false;
     replayIndex=0;
     replayCount=0;
-    //默认进入双人模式
-    mode=LOCAL;
-    // 本地 main 仍使用 Game game；只有联机入口会传入有效连接。
+    mode=connection == nullptr ? LOCAL : NETWORK;
     network=connection;
     myPlayer=localPlayer;
     networkDisconnected=false;
@@ -30,13 +28,10 @@ void Game::run()
   
     while(is_run())
     {
-        cleardevice();   // 清空画面
-        // 先接收对方落子，再处理本地输入；每帧检查一次，不阻塞窗口。
+        cleardevice(); 
         pollNetwork();
-        //处理输入
         handleMouse();
         replayStep();
-        //画棋盘
         board.draw();
         ui.drawInfo(blackWin,whiteWin,player);
         ui.drawMenu();
@@ -45,6 +40,7 @@ void Game::run()
             
         }
 }
+// 重开只清空本局状态，不改变当前模式和累计比分；同时停止旧棋局的复盘。
 void Game::restart()
 {
 
@@ -60,50 +56,45 @@ void Game::restart()
 
 
     winner=0;
+    replaying=false;
+    replayIndex=0;
+    replayCount=0;
 
 }
 void Game::handleMouse()
 {
     if(mousemsg())
     {
-        //获取鼠标点击位置
         mouse_msg msg=getmouse();
         if(msg.is_left()&&msg.is_down())
         {
-            //计算点击位置对应的行列
             int x=msg.x;
             int y=msg.y;
-            // 在联机输入分支之前检查入口按钮；处理后返回，不再把点击当作落子。
             if(ui.checkNetworkClick(x,y))
             {
                 startNetwork();
                 return;
             }
-            // 联机的回合限制与操作限制只在此分支生效，本地流程继续走下面原代码。
             if(network != nullptr)
             {
                 handleNetworkClick(x,y);
                 return;
             }
-            //判断重新开始按钮是否被点击
             if(ui.checkRestartClick(x,y))
             {
                 restart();
                 return;
             }
-            //保存
             if(ui.checkSaveClick(x,y))
             {
                 saveGame();
                 return;
             }
-            //读取
             if(ui.checkLoadClick(x,y))
             {
                 loadGame();
                 return;
             }
-            //判断复盘按钮是否被点击
             if(ui.checkReplayClick(x,y))
             {
                 if(!gameOver)
@@ -114,7 +105,6 @@ void Game::handleMouse()
                 startReplay();
                 return;
             }
-            //判断AI按钮是否被点击
             if(ui.checkAIClick(x,y))
             {
                 startAI();
@@ -123,26 +113,21 @@ void Game::handleMouse()
             if(ui.checkLocalClick(x,y))
             {
                 startLocal();
+                return;
             }
-            //如果游戏已经结束，点击棋盘不再落子，也不能再悔棋
              if(gameOver)
             {
                 return;
             }
-            //判断悔棋按钮是否被点击  
             if(ui.checkUndoClick(x,y))
             {
                 undo();
                 return;
             } 
-            //复盘时禁止棋盘操作
-
             if(replaying)
             {
                 return;
             }
-
-            //鼠标坐标转换为棋盘坐标，把交叉点附近20的点位也算进去
             int col=(x-Board::START_X+Board::GRID/2)/Board::GRID;
             int row=(y-Board::START_Y+Board::GRID/2)/Board::GRID;
             if(board.placeChess(row,col,player))
@@ -155,14 +140,22 @@ void Game::handleMouse()
                     {
                         blackWin++;
                         ui.showMessage(L"黑棋获胜");
+                        board.draw();
+                        ui.drawInfo(blackWin, whiteWin, player);
+                        ui.drawMenu();
+                        flushwindow();
+                        MessageBoxW(getHWnd(), L"黑棋获胜！", L"游戏结束", MB_OK);
                     }
                     else
                     {
                         whiteWin++;
                         ui.showMessage(L"白棋获胜");
+                        ui.drawInfo(blackWin, whiteWin, player);
+                        ui.drawMenu();
+                        flushwindow();
+                        MessageBoxW(getHWnd(), L"白棋获胜！", L"游戏结束", MB_OK);
                     }
                 }
-                //记录落子历史
                 Move move;
 
                 move.row=row;
@@ -172,12 +165,8 @@ void Game::handleMouse()
                 move.player=player;
                 history.push_back(move);
                 cout<<"player:"<<player<<" row:"<<row<<" col:"<<col<<endl;
-                //落子成功，切换玩家
                 player=3-player;
-
-
-                //AI回合
-                if(mode==AI_MODE&& player==2)
+                if(mode==AI_MODE&& player==2 && !gameOver)
                 {
                     aiMove();
                 }
@@ -185,6 +174,7 @@ void Game::handleMouse()
         }
     }
 }
+// 双人悔一步；AI 悔一个回合。如果玩家刚落子而 AI 尚未落子，只撤销玩家这一步。
 void Game::undo()
 {
 
@@ -195,31 +185,29 @@ void Game::undo()
     }
 
 
-    //取最后一步
-    Move last = history.back();
-
-
-    //删除历史记录
-    history.pop_back();
-
-
-    //棋盘对应位置清空
-    board.removeChess(
-        last.row,
-        last.col
-    );
-
-
-    //恢复玩家
-    player = last.player;
+    // AI 执白：末步为白棋说明一个回合已完成，需要连同前面的玩家黑棋一起撤销。
+    int steps = 1;
+    if(mode == AI_MODE && history.back().player == 2)
+        steps = 2;
+    for(int i = 0; i < steps && !history.empty(); i++)
+    {
+        Move last = history.back();
+        history.pop_back();
+        board.removeChess(last.row, last.col);
+        // 每撤销一步，同时恢复该步落子前的执棋方。
+        player = last.player;
+    }
+    // AI 模式中的人类固定执黑，悔棋后由玩家重新选择落点。
+    if(mode == AI_MODE)
+        player = 1;
 
 
 }
-//保存游戏
+// 保存原有棋局数据，并额外保存模式编号；不改变 AI 或联机的执行方式。
 void Game::saveGame()
 {
 
-    bool success = SaveManager::save(history,blackWin,whiteWin,player,gameOver,winner);
+    bool success = SaveManager::save(history,blackWin,whiteWin,player,gameOver,winner,mode);
 
 
     if(success)
@@ -232,14 +220,36 @@ void Game::saveGame()
     }
 
 }
-//读取游戏
+// 完整读取成功后才替换当前棋局，恢复模式、执棋方、胜负状态和历史。
 void Game::loadGame()
 {
 
-    if(!SaveManager::load(history,blackWin,whiteWin,player,gameOver,winner))
+    vector<Move> loadedHistory;
+    int loadedBlackWin, loadedWhiteWin, loadedPlayer, loadedWinner, loadedMode;
+    bool loadedGameOver;
+    if(!SaveManager::load(loadedHistory,loadedBlackWin,loadedWhiteWin,loadedPlayer,
+                          loadedGameOver,loadedWinner,loadedMode))
     {
+        ui.showMessage(L"读取失败");
         return;
     }
+    // 存档只能保存棋局，不能恢复 TCP 连接；本地窗口不接管联机存档。
+    if(loadedMode == NETWORK && network == nullptr)
+    {
+        ui.showMessage(L"联机存档需要联机连接");
+        return;
+    }
+    history = loadedHistory;
+    blackWin = loadedBlackWin;
+    whiteWin = loadedWhiteWin;
+    player = loadedPlayer;
+    gameOver = loadedGameOver;
+    winner = loadedWinner;
+    mode = static_cast<GameMode>(loadedMode);
+    // 读取新棋局时结束旧复盘，防止下一帧继续播放旧的索引。
+    replaying = false;
+    replayIndex = 0;
+    replayCount = 0;
     //清空原棋盘
     board.clear();
     //根据历史记录恢复棋盘
@@ -247,8 +257,9 @@ void Game::loadGame()
     {
         board.placeChess(move.row,move.col,move.player);
     }
-    gameOver=false;
-    winner=0;
+    // 若存档恰好停在 AI 回合，调用原有 AI 落子函数完成这一步，避免玩家代下白棋。
+    if(mode == AI_MODE && player == 2 && !gameOver)
+        aiMove();
 }
 //要开始复盘
 void Game::startReplay()
@@ -295,6 +306,7 @@ void Game::replayStep()
     replayIndex++;
 
 }
+// 先设置 AI 模式，再用统一重开函数重置本局，避免沿用双人模式的历史和回合。
 void Game::startAI()
 {
     //切换到AI模式
@@ -329,6 +341,15 @@ void Game::aiMove()
         whiteWin++;
 
         ui.showMessage(L"AI胜利");
+          // 先画出最后一步棋及右侧信息，避免弹窗出现时棋子还没显示。
+            board.draw();
+            ui.drawInfo(blackWin, whiteWin, player);
+            ui.drawMenu();
+
+            // 当前使用手动刷新模式，把刚画好的内容显示到窗口。
+            flushwindow();
+        // AI 获胜时弹窗；这里只显示结果，不改变 AI 的选点算法。
+        MessageBoxW(getHWnd(), L"AI获胜！", L"游戏结束", MB_OK);
 
         return;
     }
@@ -337,14 +358,9 @@ void Game::aiMove()
     player=1;
 }
 
-// 联机支持落子、保存和同步重开；其余操作尚未同步，暂时拒绝。
+// 联机只支持落子和同步重开；保存等操作统一提示不支持，不写入存档。
 void Game::handleNetworkClick(int x, int y)
 {
-    if(ui.checkSaveClick(x, y))
-    {
-        saveGame();
-        return;
-    }
     // 一方点击就清空本方，并通知对方清空；不等待回复，比分与连接保持不变。
     if(ui.checkRestartClick(x, y))
     {
@@ -362,7 +378,8 @@ void Game::handleNetworkClick(int x, int y)
         ui.showMessage(L"重新开始，黑棋先行");
         return;
     }
-    if(ui.checkUndoClick(x, y) ||
+    // 保存按钮也进入禁止分支；本地双人和 AI 的保存入口保持不变。
+    if(ui.checkSaveClick(x, y) || ui.checkUndoClick(x, y) ||
        ui.checkLoadClick(x, y) || ui.checkReplayClick(x, y) || ui.checkAIClick(x, y))
     {
         ui.showMessage(L"联机暂不支持此操作");
@@ -444,11 +461,29 @@ bool Game::placeNetworkMove(const Move& move)
         {
             blackWin++;
             ui.showMessage(L"黑棋获胜");
+            // 先画出最后一步棋及右侧信息，避免弹窗出现时棋子还没显示。
+            board.draw();
+            ui.drawInfo(blackWin, whiteWin, player);
+            ui.drawMenu();
+
+            // 当前使用手动刷新模式，把刚画好的内容显示到窗口。
+            flushwindow();
+            // 联机黑棋获胜时在当前窗口弹出结果提示。
+            MessageBoxW(getHWnd(), L"黑棋获胜！", L"游戏结束", MB_OK);
         }
         else
         {
             whiteWin++;
             ui.showMessage(L"白棋获胜");
+              // 先画出最后一步棋及右侧信息，避免弹窗出现时棋子还没显示。
+            board.draw();
+            ui.drawInfo(blackWin, whiteWin, player);
+            ui.drawMenu();
+
+            // 当前使用手动刷新模式，把刚画好的内容显示到窗口。
+            flushwindow();
+            // 联机白棋获胜时在当前窗口弹出结果提示。
+            MessageBoxW(getHWnd(), L"白棋获胜！", L"游戏结束", MB_OK);
         }
     }
     player = 3 - player;
@@ -462,7 +497,7 @@ void Game::stopNetwork(std::wstring message)
     network->close();
     ui.showMessage(message);
 }
-// 联机模式下，点击双人按钮切换到本地双人模式，保留当前棋盘和比分。
+// 切换到双人模式后重置本局；累计比分保留，棋盘、历史和执棋方重新开始。
 void Game::startLocal()
 {
     //切换到双人模式
@@ -470,6 +505,7 @@ void Game::startLocal()
 
     //重新开始
     restart();
+    ui.showMessage(L"双人模式开始");
 }
 
 // 本地测试入口：自动打开两个联机窗口，当前窗口和当前棋局保持原样。
